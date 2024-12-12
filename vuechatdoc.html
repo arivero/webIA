@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talk to Your HTML (Fully Vue)</title>
+    <script src="https://unpkg.com/vue@3"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #app {
+            display: grid;
+            grid-template-columns: 1fr 2fr; /* Side-by-side layout */
+            grid-template-rows: auto;
+            gap: 1rem;
+            height: 100%;
+            padding: 1rem;
+        }
+
+        #ai-container, #iframe-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        #ai-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #messages {
+            flex-grow: 1;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        #user-input, #url-loader {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        #user-input input, #url-loader input {
+            flex-grow: 1;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #iframe-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        iframe {
+            width: 100%;
+            flex-grow: 1;
+            border: none;
+        }
+
+        #iframe-header {
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            padding: 0.5rem;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- AI Interaction Section -->
+        <div id="ai-container">
+            <div id="messages">
+                <div v-for="message in messages" :key="message.id" class="message">
+                    <strong>{{ message.sender }}:</strong> {{ message.text }}
+                </div>
+            </div>
+            <div id="user-input">
+                <input type="text" v-model="userInput" placeholder="Ask something..." @keypress.enter="handleUserInput">
+                <button @click="handleUserInput">Send</button>
+            </div>
+            <div id="url-loader">
+                <input type="text" v-model="iframeUrlInput" placeholder="Enter a URL">
+                <button @click="loadIframe">Go</button>
+            </div>
+            <div id="debug-info">
+                <p><strong>Debug Info:</strong></p>
+                <p>Scroll Position: <span>{{ debugInfo.scrollPosition }}</span></p>
+                <p>Visible Elements: <span>{{ debugInfo.visibleElements }}</span></p>
+            </div>
+        </div>
+
+        <!-- Iframe Section -->
+        <div id="iframe-container">
+            <div id="iframe-header">
+                Currently Viewing: <span>{{ iframeUrl }}</span> | Section: <span>{{ iframeSection }}</span>
+            </div>
+            <iframe id="html-iframe" :src="iframeUrl" @load="updateIframeHeader"></iframe>
+        </div>
+    </div>
+
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    messages: [],
+                    userInput: '',
+                    iframeUrlInput: 'example.html',
+                    iframeUrl: 'example.html',
+                    iframeSection: 'N/A',
+                    debugInfo: {
+                        scrollPosition: 'N/A',
+                        visibleElements: 'N/A'
+                    }
+                };
+            },
+            methods: {
+                addMessage(text, sender = 'AI') {
+                    this.messages.push({ id: Date.now(), text, sender });
+                    this.$nextTick(() => {
+                        const messagesDiv = document.getElementById('messages');
+                        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                    });
+                },
+                handleUserInput() {
+                    if (!this.userInput.trim()) return;
+
+                    this.addMessage(this.userInput, 'User');
+
+                    if (this.userInput.toLowerCase().includes('section 1')) {
+                        this.addMessage('Let me navigate to Section 1 for you.');
+                        this.navigateToElement('section1');
+                    } else if (this.userInput.toLowerCase().includes('section 2')) {
+                        this.addMessage('Sure, jumping to Section 2.');
+                        this.navigateToElement('section2');
+                    } else if (this.userInput.toLowerCase().includes('extract anchors')) {
+                        this.extractAnchors();
+                    } else {
+                        this.addMessage("I'm not sure how to respond to that yet.");
+                    }
+
+                    this.userInput = '';
+                },
+                loadIframe() {
+                    if (!this.iframeUrlInput.trim()) return;
+                    this.iframeUrl = this.iframeUrlInput.trim();
+                    this.iframeSection = 'N/A';
+                },
+                updateIframeHeader() {
+                    const iframe = document.getElementById('html-iframe');
+                    try {
+                        this.iframeUrl = iframe.contentWindow.location.href;
+                        this.iframeSection = iframe.contentWindow.location.hash || 'N/A';
+                    } catch (error) {
+                        this.iframeUrl = iframe.src;
+                        this.iframeSection = 'N/A';
+                    }
+                    this.updateDebugInfo();
+                },
+                navigateToElement(id) {
+                    const iframe = document.getElementById('html-iframe');
+                    try {
+                        const iframeDoc = iframe.contentWindow.document;
+                        const targetElement = iframeDoc.getElementById(id);
+                        if (targetElement) {
+                            iframe.contentWindow.location.hash = `#${id}`;
+                            this.addMessage(`Navigated to element with ID: ${id} using hash.`);
+                        } else {
+                            this.scrollToElement(id);
+                        }
+                    } catch (error) {
+                        this.addMessage('Unable to navigate. Ensure same-origin policies allow access to the iframe content.');
+                    }
+                },
+                scrollToElement(id) {
+                    const iframe = document.getElementById('html-iframe');
+                    try {
+                        const iframeDoc = iframe.contentWindow.document;
+                        const targetElement = iframeDoc.getElementById(id);
+                        if (targetElement) {
+                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            this.addMessage(`Scrolled to element with ID: ${id}.`);
+                        } else {
+                            this.addMessage(`Element with ID '${id}' not found for scrolling.`);
+                        }
+                        this.updateDebugInfo();
+                    } catch (error) {
+                        this.addMessage('Unable to scroll. Ensure same-origin policies allow access to the iframe content.');
+                    }
+                },
+                extractAnchors() {
+                    const iframe = document.getElementById('html-iframe');
+                    try {
+                        const iframeDoc = iframe.contentWindow.document;
+                        const anchors = Array.from(iframeDoc.querySelectorAll('a'));
+                        if (anchors.length === 0) {
+                            this.addMessage('No anchors found on the current page.');
+                            return;
+                        }
+                        const anchorList = anchors.map(a => a.href || a.textContent).join(', ');
+                        this.addMessage(`Found anchors: ${anchorList}`);
+                        this.debugInfo.visibleElements = anchorList;
+                    } catch (error) {
+                        this.addMessage('Unable to extract anchors. Make sure the iframe content allows cross-origin access.');
+                    }
+                },
+                updateDebugInfo() {
+                    const iframe = document.getElementById('html-iframe');
+                    try {
+                        const iframeDoc = iframe.contentWindow.document;
+                        const scrollTop = iframeDoc.documentElement.scrollTop || iframeDoc.body.scrollTop;
+                        const viewportHeight = iframe.contentWindow.innerHeight;
+                        this.debugInfo.scrollPosition = `Top: ${scrollTop}, Viewport Height: ${viewportHeight}`;
+
+                        const visibleElements = Array.from(iframeDoc.querySelectorAll('*')).filter(el => {
+                            const rect = el.getBoundingClientRect();
+                            return rect.top >= 0 && rect.bottom <= viewportHeight;
+                        }).map(el => el.id || el.tagName).join(', ');
+                        this.debugInfo.visibleElements = visibleElements || 'No identifiable elements';
+                    } catch (error) {
+                        this.debugInfo.scrollPosition = 'No info (CORS restriction)';
+                        this.debugInfo.visibleElements = 'No info (CORS restriction)';
+                    }
+                }
+            },
+            mounted() {
+                setInterval(() => {
+                    this.updateIframeHeader();
+                }, 1000);
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>
