@@ -13,6 +13,10 @@
             <input type="text" id="input-field" placeholder="Ask something...">
             <button id="send-button">Send</button>
         </div>
+        <div id="url-loader">
+            <input type="text" id="iframe-url-input" placeholder="Enter a URL">
+            <button id="load-iframe">Go</button>
+        </div>
         <div id="debug-info">
             <p><strong>Debug Info:</strong></p>
             <p>Scroll Position: <span id="scroll-position">N/A</span></p>
@@ -33,6 +37,17 @@
         const iframeSection = document.getElementById('iframe-section');
         const scrollPositionSpan = document.getElementById('scroll-position');
         const visibleElementsSpan = document.getElementById('visible-elements');
+        const iframeUrlInput = document.getElementById('iframe-url-input');
+        const loadIframeButton = document.getElementById('load-iframe');
+
+        loadIframeButton.addEventListener('click', () => {
+            const url = iframeUrlInput.value.trim();
+            if (url) {
+                iframe.src = url;
+                iframeUrl.textContent = url;
+                iframeSection.textContent = 'N/A';
+            }
+        });
 
         function addMessage(content, sender = 'AI') {
             const message = document.createElement('div');
