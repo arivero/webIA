@@ -13,6 +13,11 @@
             <input type="text" id="input-field" placeholder="Ask something...">
             <button id="send-button">Send</button>
         </div>
+        <div id="debug-info">
+            <p><strong>Debug Info:</strong></p>
+            <p>Scroll Position: <span id="scroll-position">N/A</span></p>
+            <p>Visible Elements: <span id="visible-elements">N/A</span></p>
+        </div>
     </div>
     <div id="iframe-container">
         <div id="iframe-header">Currently Viewing: <span id="iframe-url">example.html</span> | Section: <span id="iframe-section">N/A</span></div>
@@ -26,6 +31,8 @@
         const iframe = document.getElementById('html-iframe');
         const iframeUrl = document.getElementById('iframe-url');
         const iframeSection = document.getElementById('iframe-section');
+        const scrollPositionSpan = document.getElementById('scroll-position');
+        const visibleElementsSpan = document.getElementById('visible-elements');
 
         function addMessage(content, sender = 'AI') {
             const message = document.createElement('div');
@@ -55,6 +62,24 @@
             } catch (error) {
                 iframeUrl.textContent = iframe.src;
                 iframeSection.textContent = 'N/A';
+            }
+        }
+
+        function updateDebugInfo() {
+            try {
+                const iframeDoc = iframe.contentWindow.document;
+                const scrollTop = iframeDoc.documentElement.scrollTop || iframeDoc.body.scrollTop;
+                const viewportHeight = iframe.contentWindow.innerHeight;
+                scrollPositionSpan.textContent = `Top: ${scrollTop}, Viewport Height: ${viewportHeight}`;
+
+                const visibleElements = Array.from(iframeDoc.querySelectorAll('*')).filter(el => {
+                    const rect = el.getBoundingClientRect();
+                    return rect.top >= 0 && rect.bottom <= viewportHeight;
+                }).map(el => el.id || el.tagName).join(', ');
+                visibleElementsSpan.textContent = visibleElements || 'No identifiable elements';
+            } catch (error) {
+                scrollPositionSpan.textContent = 'No info (CORS restriction)';
+                visibleElementsSpan.textContent = 'No info (CORS restriction)';
             }
         }
 
@@ -91,6 +116,7 @@
                     scrollToElement(id);
                 }
                 updateIframeHeader();
+                updateDebugInfo();
             } catch (error) {
                 addMessage('Unable to navigate. Ensure same-origin policies allow access to the iframe content.');
             }
@@ -107,6 +133,7 @@
                 } else {
                     addMessage(`Element with ID '${id}' not found for scrolling.`);
                 }
+                updateDebugInfo();
             } catch (error) {
                 addMessage('Unable to scroll. Ensure same-origin policies allow access to the iframe content.');
             }
@@ -145,10 +172,16 @@
         });
 
         // Update iframe header when hash changes
-        iframe.addEventListener('load', updateIframeHeader);
+        iframe.addEventListener('load', () => {
+            updateIframeHeader();
+            updateDebugInfo();
+        });
 
-        // Periodically check for navigation changes
-        setInterval(detectIframeNavigation, 1000);
+        // Periodically check for navigation changes and debug updates
+        setInterval(() => {
+            detectIframeNavigation();
+            updateDebugInfo();
+        }, 1000);
 
         // Initial AI greeting
         addMessage('Hello! I am your AI assistant. Ask me to navigate or interact with the HTML content.');
