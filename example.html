@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example HTML</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+
+        section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        h2 {
+            color: #007BFF;
+        }
+
+        a {
+            color: #007BFF;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Example HTML Content</h1>
+    <p>Welcome to the example HTML page! Use the links below or ask the AI to navigate to specific sections.</p>
+    <nav>
+        <a href="#section1">Go to Section 1</a> | 
+        <a href="#section2">Go to Section 2</a>
+    </nav>
+
+    <section id="section1">
+        <h2>Section 1</h2>
+        <p>This is the content of Section 1. You can navigate back to Section 2 using the link below.</p>
+        <a href="#section2">Jump to Section 2</a>
+    </section>
+
+    <section id="section2">
+        <h2>Section 2</h2>
+        <p>This is the content of Section 2. You can navigate back to Section 1 using the link below.</p>
+        <a href="#section1">Jump to Section 1</a>
+    </section>
+</body>
+</html>
