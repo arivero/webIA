@@ -57,8 +57,20 @@
 
         iframe {
             width: 100%;
-            height: 100%;
+            height: calc(100% - 40px);
             border: none;
+            overflow-y: scroll;
+        }
+
+        #iframe-header {
+            background-color: #f9f9f9;
+            border-bottom: 1px solid #ddd;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        #iframe-header span {
+            font-weight: bold;
         }
     </style>
 </head>
@@ -71,6 +83,7 @@
         </div>
     </div>
     <div id="iframe-container">
+        <div id="iframe-header">Currently Viewing: <span id="iframe-url">example.html</span> | Section: <span id="iframe-section">N/A</span></div>
         <iframe id="html-iframe" src="example.html"></iframe>
     </div>
 
@@ -79,12 +92,38 @@
         const inputField = document.getElementById('input-field');
         const sendButton = document.getElementById('send-button');
         const iframe = document.getElementById('html-iframe');
+        const iframeUrl = document.getElementById('iframe-url');
+        const iframeSection = document.getElementById('iframe-section');
 
         function addMessage(content, sender = 'AI') {
             const message = document.createElement('div');
             message.textContent = `${sender}: ${content}`;
             messagesDiv.appendChild(message);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateIframeHeader() {
+            try {
+                iframeUrl.textContent = iframe.contentWindow.location.href;
+                iframeSection.textContent = iframe.contentWindow.location.hash || 'N/A';
+            } catch (error) {
+                iframeUrl.textContent = iframe.src;
+                iframeSection.textContent = 'N/A';
+            }
+        }
+
+        function detectIframeNavigation() {
+            try {
+                const currentUrl = iframe.contentWindow.location.href;
+                if (iframeUrl.textContent !== currentUrl) {
+                    iframeUrl.textContent = currentUrl;
+                    iframeSection.textContent = iframe.contentWindow.location.hash || 'N/A';
+                    addMessage(`Navigated to a new page: ${currentUrl}`, 'System');
+                }
+            } catch (error) {
+                iframeUrl.textContent = iframe.src;
+                iframeSection.textContent = 'N/A';
+            }
         }
 
         function handleUserInput() {
@@ -109,10 +148,6 @@
         }
 
         function navigateToElement(id) {
-            /*
-                Attempt navigation using hash first.
-                If hash-based navigation is not available, fallback to scroll navigation.
-            */
             try {
                 const iframeDoc = iframe.contentWindow.document;
                 const targetElement = iframeDoc.getElementById(id);
@@ -121,9 +156,9 @@
                     iframe.contentWindow.location.hash = `#${id}`;
                     addMessage(`Navigated to element with ID: ${id} using hash.`);
                 } else {
-                    // Fallback to scrolling
                     scrollToElement(id);
                 }
+                updateIframeHeader();
             } catch (error) {
                 addMessage('Unable to navigate. Ensure same-origin policies allow access to the iframe content.');
             }
@@ -146,16 +181,6 @@
         }
 
         function extractAnchors() {
-            /*
-                Cross-Origin Considerations:
-                - If the iframe content is from a different origin, you cannot directly access its DOM due to the browser's same-origin policy.
-                - Solutions include:
-                  1. **PostMessage API**: Use `postMessage` to communicate with the iframe if you control both the parent and iframe content.
-                     The iframe can extract its own anchors and send them back to the parent.
-                  2. **Fetch/Proxy Fallback**: If direct access is blocked, fetch the content server-side or client-side (if allowed by CORS).
-                     Example included below.
-            */
-
             try {
                 const anchors = iframe.contentWindow.document.querySelectorAll('a');
                 if (anchors.length === 0) {
@@ -168,7 +193,6 @@
             } catch (error) {
                 addMessage('Unable to extract anchors. Make sure the iframe content allows cross-origin access.');
 
-                // Example Fetch Fallback
                 const iframeSrc = iframe.src;
                 fetch(iframeSrc)
                     .then(response => response.text())
@@ -187,6 +211,12 @@
         inputField.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleUserInput();
         });
+
+        // Update iframe header when hash changes
+        iframe.addEventListener('load', updateIframeHeader);
+
+        // Periodically check for navigation changes
+        setInterval(detectIframeNavigation, 1000);
 
         // Initial AI greeting
         addMessage('Hello! I am your AI assistant. Ask me to navigate or interact with the HTML content.');
